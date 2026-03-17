@@ -90,6 +90,10 @@ void z80_step(z80_cpu* CPU){
         case 0x93: result = (uint16_t)CPU->A - CPU->E; update_flags_sub(CPU, CPU->A, CPU->E, result); CPU->A = result & 0xFF; break; 
 
         //TODO : jump routines
+        case 0xc3:
+            CPU->PC = fetch(CPU->PC); //imposta il pc scritto sul valore nell'indirizzo indicato da pc+1
+            break;
+
 
         default:
             printf("Opcode non implementato");
