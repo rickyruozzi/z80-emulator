@@ -120,6 +120,55 @@ void z80_step(z80_cpu* CPU){
             if(!TEST_FLAG(CPU, FLAG_C)) CPU->PC = addr; 
             break;
 
+        //CALL - esegue il jump e salva sullo stack il PC
+        case 0xCD:
+            uint16_t addr = fetch_word(CPU);
+            push(CPU, CPU->PC); //salva sullo stack l'attuale PC    
+            CPU->PC = addr; 
+            break;
+        
+        //RET - recupera il PC che avevamo pushato
+        case 0xC9:
+            CPU->PC = pop(CPU); 
+            break;
+
+         //DJNZ - decrementa B di unb dato offset e salta se è diverso da zero
+        case 0x10:
+            int8_t offset = (int8_t)fetch(CPU); //di quanto saltiamo, il salto è rappresentato ad 8 bit
+            CPU->B--; //DJNZ - decrementa B di unb dato offset e salta se è diverso da zero
+            if(CPU->B != 0) CPU->PC += offset;
+            break;
+
+        // JR offset - salto incondizionato
+        case 0x18: 
+            int8_t offset = (int8_t)fetch(CPU); //convertiamo l'unsigned in signed
+            CPU->PC += offset;
+            break;
+
+        //JR Z, offset - salta di <offset> se il flag zero è attivo
+        case 0x28:
+            int8_t offset = (int8_t)fetch(CPU);
+            if(TEST_FLAG(CPU, FLAG_Z)) CPU->PC += offset; 
+            break;
+
+        //JR nz, offset - salta se flag_zero è disattivato
+        case 0x20:
+            int8_t offset = (int8_t)fetch(CPU);
+            if(TEST_FLAG(CPU, FLAG_Z)) CPU->PC += offset;  
+            break;
+
+        // JR C, offset - salto se il flag di carry è attivo
+        case 0x38:
+            int8_t offset = (int8_t)fetch(CPU);
+            if (TEST_FLAG(CPU, FLAG_C)) CPU->PC += offset;
+            break;
+
+        // JR NC, e — salta se non Carry
+        case 0x30: 
+            int8_t offset = (int8_t)fetch(CPU);
+            if (!TEST_FLAG(CPU, FLAG_C)) CPU->PC += offset;
+            break;
+
         default:
             printf("Opcode non implementato");
             exit(1);
