@@ -1,5 +1,9 @@
 #include "z80.h"
 
+#define SET_FLAG(cpu, f)    ((cpu)->flags |=  (f))
+#define RESET_FLAG(cpu, f)  ((cpu)->flags &= ~(f))
+#define TEST_FLAG(cpu, f)   ((cpu)->flags &   (f))
+
 void update_flags_add(z80_cpu* CPU, uint8_t a, uint8_t b, uint16_t result) {
     RESET_FLAG(CPU, FLAG_N);                                          // ADD resetta N
     (result & 0xFF) == 0 ? SET_FLAG(CPU, FLAG_Z) : RESET_FLAG(CPU, FLAG_Z);   // Zero
@@ -29,6 +33,7 @@ void CPU_reset(z80_cpu* CPU){
 uint8_t fetch(z80_cpu* CPU){
     return memory[CPU->PC++]; //recupera l'istruzione scritta nel byte successivo
 }
+
 
 void z80_step(z80_cpu* CPU){
     uint8_t opcode = fetch(CPU);
@@ -89,11 +94,31 @@ void z80_step(z80_cpu* CPU){
         case 0x92: result = (uint16_t)CPU->A - CPU->D; update_flags_sub(CPU, CPU->A, CPU->D, result); CPU->A = result & 0xFF; break; 
         case 0x93: result = (uint16_t)CPU->A - CPU->E; update_flags_sub(CPU, CPU->A, CPU->E, result); CPU->A = result & 0xFF; break; 
 
-        //TODO : jump routines
+        //Jump to N
         case 0xc3:
             CPU->PC = fetch(CPU->PC); //imposta il pc scritto sul valore nell'indirizzo indicato da pc+1
             break;
 
+        // jump to n if flag_zero is activated
+        case 0xCA:
+            uint16_t addr = fetch_word(CPU); 
+            if (TEST_FLAG(CPU, FLAG_Z)) CPU->PC = addr;
+            break;  
+        
+        case 0xC2:
+            uint16_t addr = fetch_word(CPU);
+            if(!TEST_FLAG(CPU, FLAG_Z)) CPU->PC = addr; 
+            break;
+
+        case 0xDA : 
+            uint16_t addr = fetch_word(CPU);
+            if(TEST_FLAG(CPU, FLAG_C)) CPU->PC = addr;
+            break;
+
+        case 0xD2:
+            uint16_t addr = fetch_word(CPU);
+            if(!TEST_FLAG(CPU, FLAG_C)) CPU->PC = addr; 
+            break;
 
         default:
             printf("Opcode non implementato");
