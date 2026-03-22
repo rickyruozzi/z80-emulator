@@ -4,6 +4,25 @@
 #define RESET_FLAG(cpu, f)  ((cpu)->flags &= ~(f))
 #define TEST_FLAG(cpu, f)   ((cpu)->flags &   (f))
 
+uint8_t z80_read_byte(z80_cpu* CPU, uint16_t addr) {
+    return memory[addr]; //leggiamo un byte dalla memoria
+}
+
+void z80_write_byte(z80_cpu* CPU, uint16_t addr, uint8_t value) {
+    memory[addr] = value; //scriviamo un byte nella memoria
+}
+
+uint16_t z80_read_word(z80_cpu* CPU, uint16_t addr) {
+    uint8_t lo = z80_read_byte(CPU, addr); //combiniamo due byte in una sola word in lettura
+    uint8_t hi = z80_read_byte(CPU, addr + 1);
+    return (uint16_t)(hi << 8) | lo;
+}
+
+void z80_write_word(z80_cpu* CPU, uint16_t addr, uint16_t value) {
+    z80_write_byte(CPU, addr,     value & 0xFF);        //combiniamo due byte che scriviamo in due registri
+    z80_write_byte(CPU, addr + 1, (value >> 8) & 0xFF); 
+}
+
 void update_flags_add(z80_cpu* CPU, uint8_t a, uint8_t b, uint16_t result) {
     RESET_FLAG(CPU, FLAG_N);                                          // ADD resetta N
     (result & 0xFF) == 0 ? SET_FLAG(CPU, FLAG_Z) : RESET_FLAG(CPU, FLAG_Z);   // Zero
@@ -167,6 +186,29 @@ void z80_step(z80_cpu* CPU){
         case 0x30: 
             int8_t offset = (int8_t)fetch(CPU);
             if (!TEST_FLAG(CPU, FLAG_C)) CPU->PC += offset;
+            break;
+
+        // LDIR — copia blocco HL->DE, decrementa BC finché BC=0    
+        case 0XED:
+            uint8_t ed_op = fetch(CPU); //nel prossimo byte troveremo il tipo di istruzione LDIR
+            switch(ed_op){
+                case 0xB0:
+                    uint16_t hl = (uint16_t)(CPU->H << 8) | CPU->L; //combiniamo il byte nei registri h e l
+                    uint16_t de = (uint16_t)(CPU->D << 8) | CPU->E; //combiniamo il byte nei regitri d ed e
+                    uint16_t bc = (uint16_t)(CPU->B << 8) | CPU->C; //combiniamo il byte nei registri b e d
+                    while(bc != 0){
+                        z80_write_byte(CPU, de, z80_read_byte(CPU, hl)); //scrive all'indirizzo indicato da de il valore letto dall'indirizzo hl
+                        bc--; de++; hl++; //incrementiamo l'indirizzo al byte successivo per de e hl e decrementiamo il contatore scritto in bc
+                    }
+                    CPU->H = (hl >> 8) & 0xFF;
+                    CPU->L = hl & 0xFF ; 
+                    CPU->D = (de >> 8) & 0xFF; 
+                    CPU->E = de & 0xFF;
+                    CPU->B = (bc >> 8) & 0xFF; 
+                    CPU->C = bc & 0xFF;  //ripristiniamo come valori dei registri dopo l'operazione quelli che rimarrebbero se ci trovassimo in una implementazione fisica della CPU
+                    break; //l'operazione è resa necessaria dal fatto che abbiamo uisato come variabili alcuini unsigned int a 16 bit che combinavano il contenuto dei due registri ad 8 bit
+                    
+            }
             break;
 
         default:
