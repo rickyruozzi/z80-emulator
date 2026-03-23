@@ -263,3 +263,8 @@ uint16_t fetch_word(z80_cpu *CPU){
     return ((uint16_t)alto << 8) | basso ; //restituiamo la word
 }
 
+void z80_run(z80_cpu* CPU) {
+    while (!CPU->halted) { //se la CPU non è in halted eseguiamo uno step alla chiamata
+        z80_step(CPU); 
+    }
+}
