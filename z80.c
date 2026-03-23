@@ -206,8 +206,29 @@ void z80_step(z80_cpu* CPU){
                     CPU->E = de & 0xFF;
                     CPU->B = (bc >> 8) & 0xFF; 
                     CPU->C = bc & 0xFF;  //ripristiniamo come valori dei registri dopo l'operazione quelli che rimarrebbero se ci trovassimo in una implementazione fisica della CPU
+                    RESET_FLAG(CPU, FLAG_H);
+                    RESET_FLAG(CPU, FLAG_PV);
+                    RESET_FLAG(CPU, FLAG_N);
                     break; //l'operazione è resa necessaria dal fatto che abbiamo uisato come variabili alcuini unsigned int a 16 bit che combinavano il contenuto dei due registri ad 8 bit
-                    
+                
+                case 0xB8:
+                    uint16_t hl = (uint16_t)(CPU->H << 8) | CPU->L; //combiniamo il byte nei registri h e l
+                    uint16_t de = (uint16_t)(CPU->D << 8) | CPU->E; //combiniamo il byte nei regitri d ed e
+                    uint16_t bc = (uint16_t)(CPU->B << 8) | CPU->C; //combiniamo il byte nei registri b e d
+                    while(bc != 0){
+                        z80_write_byte(CPU, de, z80_read_byte(CPU, hl)); //permette di scrivere nel registro specificato in de il valore scritto nel registro hl
+                        bc--; de--; hl--;  //A differenza che nell'istruzione passata questa volta andiamo in sesno inverso 
+                    }
+                    CPU->H = (hl >> 8) & 0xFF;
+                    CPU->L = hl & 0xFF ; 
+                    CPU->D = (de >> 8) & 0xFF; 
+                    CPU->E = de & 0xFF;
+                    CPU->B = (bc >> 8) & 0xFF; 
+                    CPU->C = bc & 0xFF; 
+                    RESET_FLAG(CPU, FLAG_H);
+                    RESET_FLAG(CPU, FLAG_PV);
+                    RESET_FLAG(CPU, FLAG_N);
+                    break;
             }
             break;
 
